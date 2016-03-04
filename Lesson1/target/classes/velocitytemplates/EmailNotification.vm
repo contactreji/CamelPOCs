@@ -1,0 +1,8 @@
+Hello Customer
+
+This is a notification for the recently received order ${in.headers.itemname} bound for region ${in.headers.shippingCode}.
+
+Manufacturer : ${in.headers.manufacturer}
+
+Regards
+Team!

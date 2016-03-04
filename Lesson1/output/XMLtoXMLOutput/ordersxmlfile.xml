@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<orders xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:fo="http://www.w3.org/1999/XSL/Format"
+        xmlns:fn="http://www.w3.org/2005/xpath-functions">
+   <orderitem>
+      <itemname>Motherboard</itemname>
+      <manufacturername>ASUS</manufacturername>
+      <cost> 123.00</cost>
+   </orderitem>
+   <orderitem>
+      <itemname>Video Card</itemname>
+      <manufacturername>ATI</manufacturername>
+      <cost> 160.00</cost>
+   </orderitem>
+   <orderitem>
+      <itemname>Sound Card</itemname>
+      <manufacturername>Creative Labs</manufacturername>
+      <cost> 80.00</cost>
+   </orderitem>
+   <orderitem>
+      <itemname>inch Monitor</itemname>
+      <manufacturername>LG Electronics</manufacturername>
+      <cost> 290.00</cost>
+   </orderitem>
+</orders>

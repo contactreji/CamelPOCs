@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Configures the Camel Context -->
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:amq="http://activemq.apache.org/schema/core"
+	xmlns:ctx="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="
+       http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd
+       http://activemq.apache.org/schema/core http://activemq.apache.org/schema/core/activemq-core.xsd
+       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+       ">
+
+	<ctx:property-placeholder location="classpath:appConfigs.properties" />
+
+	<camelContext xmlns="http://camel.apache.org/schema/spring">
+		<propertyPlaceholder location="classpath:appConfigs.properties"
+			id="placeholder" />
+
+		<!-- <route id="ScheduledPoller_Route">
+			<from uri="timer://foo?fixedRate=true&amp;period=60000" />
+			<pollEnrich uri="file:myinputfiles?noop=true" timeout="5000" />
+			<log
+				message="ScheduledPoller - The exchange ID is ${exchangeId} and file contains ${body}" />
+			<to uri="seda:parseXML" />
+		</route> -->
+
+		<route id="ContinousFilePollingRoute"> <!-- routePolicyRef="startPolicy" -->
+			<from uri="file:myinputfiles?noop=true" />
+			<log message="The exchange ID is ${exchangeId} and file contains ${body}" />
+			<to uri="seda:parseXML" />
+		</route>
+
+		<route id="XqueryTransformationRoute">
+			<from uri="seda:parseXML" />
+			<setHeader headerName="country">
+				<xpath resultType="java.lang.String">PART/COUNTRY/text()</xpath>
+			</setHeader>
+			<setProperty propertyName="modelNumber">
+				<xpath resultType="java.lang.String">PART/MODEL/text()</xpath>
+			</setProperty>
+
+			<log message="Value of country is ${in.header.country}" />
+			<to uri="log:MyyExchangePrinter?showAll=true" />
+			<to uri="xquery:xquery/MyFirstXquery.xq" />
+			<to uri="seda:ContentBasedRouter" />
+		</route>
+
+		<route id="ContentBasedRouter">
+			<from uri="seda:ContentBasedRouter" />
+
+			<setHeader headerName="itemname">
+				<xpath resultType="java.lang.String">//Item/text()</xpath>
+			</setHeader>
+			<setHeader headerName="shippingCode">
+				<xpath resultType="java.lang.String">//ShippingCode</xpath>
+			</setHeader>
+			<setHeader headerName="manufacturer">
+				<xpath resultType="java.lang.String">//Manufacturer</xpath>
+			</setHeader>
+
+			<setHeader headerName="cost">
+				<xpath resultType="java.lang.String">//Cost</xpath>
+			</setHeader>
+			<setHeader headerName="model">
+				<xpath resultType="java.lang.String">//Model</xpath>
+			</setHeader>
+
+
+			<choice>
+				<when>
+					<simple>${in.header.country} == 'US'</simple>
+					<to uri="file:output/US" />
+				</when>
+				<when>
+					<simple>${in.header.country} == 'INDIA'</simple>
+					<to uri="file:output/INDIA" />
+				</when>
+				<otherwise>
+					<to uri="file:output/UNCLASSIFIED" />
+				</otherwise>
+			</choice>
+
+			<inOnly uri="activemq:queue:DBLoggingChannel" />
+			<to uri="seda:EmailAlertingRoute" />
+			<log message="The business data at this point is still ${body}" />
+		</route>
+
+		<route id="EmailAlertAndFTPStorageRoute">
+			<from uri="seda:EmailAlertingRoute" />
+			<to uri="velocity:velocitytemplates/EmailNotification.vm" />
+			<log message="The notification data at this point is still ${body}" />
+			<setHeader headerName="CamelFileName">
+				<simple>ORDERS_${date:now:yyyyMMdd}${bean:dateClass?method=currentTimeMillis}.txt
+				</simple>
+			</setHeader>
+			<multicast>
+				<to uri="file:output/alertmessages" />
+				<to
+					uri="ftp://{{ftpUserName}}@{{ftpHost}}:{{ftpPort}}/{{ftpPath}}?password={{ftpPassword}}" />
+			</multicast>
+		</route>
+
+		<route id="DBInsertRoute">
+			<from uri="activemq:queue:DBLoggingChannel" />
+			<to uri="log:CheckJMSHeaders?showAll=true" />
+			<!-- SQL Query should be in the Body part of Exchange -->
+			<setBody>
+				<simple>insert into orders values
+					('${in.header.itemname}','${in.header.manufacturer}','${in.header.cost}','${in.header.shippingCode}','${in.header.model}','${in.header.country}')
+				</simple>
+			</setBody>
+			<to uri="jdbc:dataSourceConnectorPGSQL" />
+		</route>
+
+	</camelContext>
+
+	<bean id="dateClass" class="java.lang.System" />
+
+	<bean id="dataSourceConnectorPGSQL" class="org.apache.commons.dbcp.BasicDataSource">
+		<property name="driverClassName" value="org.postgresql.Driver" />
+		<property name="url"
+			value="jdbc:postgresql://${jdbcHost}:${jdbcPort}/training" />
+		<property name="username" value="${jdbcUserName}" />
+		<property name="password" value="${jdbcPassword}" />
+		<property name="initialSize" value="${jdbcThreadInitialSize}" />
+		<property name="maxActive" value="${jdbcThreadMaxSize}" />
+	</bean>
+
+	<bean id="activemq" class="org.apache.activemq.camel.component.ActiveMQComponent">
+		<property name="brokerURL" value="tcp://localhost:61616" />
+		<property name="userName" value="admin" />
+		<property name="password" value="admin" />
+	</bean>
+	<bean id="startPolicy"
+		class="org.apache.camel.routepolicy.quartz.CronScheduledRoutePolicy">
+		<property name="routeStartTime" value="*/3 * * * * ?" />
+	</bean>
+
+</beans>

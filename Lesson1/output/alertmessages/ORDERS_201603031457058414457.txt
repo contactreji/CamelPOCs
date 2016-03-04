@@ -1,0 +1,8 @@
+Hello Customer
+
+This is a notification for the recently received order Motherboard bound for region US33030.
+
+Manufacturer : ASUS
+
+Regards
+Team!
