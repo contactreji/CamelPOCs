@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Configures the Camel Context -->
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:amq="http://activemq.apache.org/schema/core"
+	xmlns:ctx="http://www.springframework.org/schema/context" xmlns:cxf="http://camel.apache.org/schema/cxf"
+	xmlns:m="http://www.dataaccess.com/webservicesserver/"
+	xsi:schemaLocation="
+       http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd
+       http://activemq.apache.org/schema/core http://activemq.apache.org/schema/core/activemq-core.xsd
+       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+       http://camel.apache.org/schema/cxf http://camel.apache.org/schema/cxf/camel-cxf.xsd
+       ">
+
+	<ctx:property-placeholder location="classpath:appConfigs.properties" />
+
+
+	<cxf:cxfEndpoint id="MyCRUDapi" address="http://localhost:1001/api/orders"
+		wsdlURL="wsdl/CrudAPI.wsdl" serviceName="ns1:CRUDService"
+		endpointName="ns1:CRUDPort" xmlns:ns1="http://new.webservice.namespace">
+		<cxf:properties>
+			<entry key="dataFormat" value="PAYLOAD" />
+		</cxf:properties>
+	</cxf:cxfEndpoint>
+
+	<camelContext xmlns="http://camel.apache.org/schema/spring">
+		<route>
+			<from uri="cxf:bean:MyCRUDapi" />
+			<to uri="log:CRUDRequest?showAll=true" />
+			<choice>
+				<when>
+					<simple>${in.header.operationName} == 'CreateOperation'</simple>
+					<setProperty propertyName="item">
+						<xpath resultType="java.lang.String">//Record/item/text()</xpath>
+					</setProperty>
+					<setProperty propertyName="manufacturer">
+						<xpath resultType="java.lang.String">//Record/manufacturer/text()</xpath>
+					</setProperty>
+					<setProperty propertyName="cost">
+						<xpath resultType="java.lang.String">//Record/cost/text()</xpath>
+					</setProperty>
+					<setProperty propertyName="shippingCode">
+						<xpath resultType="java.lang.String">//Record/shippingCode/text()</xpath>
+					</setProperty>
+					<setProperty propertyName="model">
+						<xpath resultType="java.lang.String">//Record/modelnumber/text()</xpath>
+					</setProperty>
+					<setProperty propertyName="region">
+						<xpath resultType="java.lang.String">//Record/region/text()</xpath>
+					</setProperty>
+					<setBody>
+						<simple>INSERT INTO public.orders(item, manufacturer, cost,
+							shippingcode, modelnumber, region)VALUES
+							('${property.item}','${property.manufacturer}',
+							'${property.cost}','${property.shippingCode}','${property.model}','${property.region}')
+						</simple>
+					</setBody>
+					<to uri="jdbc:dataSourceConnectorPGSQL" />
+					<setBody>
+						<constant>&lt;dummy/&gt;</constant>
+					</setBody>
+					<to uri="xquery:xquery/crudAPICreateResponse.xq" />
+				</when>
+				<otherwise>
+					<log message="This operation is not supported" />
+				</otherwise>
+
+			</choice>
+		</route>
+	</camelContext>
+</beans>

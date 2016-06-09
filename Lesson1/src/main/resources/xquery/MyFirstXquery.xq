@@ -1,4 +1,5 @@
 declare variable $modelNumber as xs:string external;
+declare variable $costInWords as xs:string external;
 <Output>
    {
 if (data(PART/COUNTRY/text()) = 'US')
@@ -7,6 +8,7 @@ then(
       <Item>{data(PART/ITEM/text())}</Item>
       <Manufacturer>{data(PART/MANUFACTURER/text())}</Manufacturer>
       <Cost>{data(PART/COST/text())}</Cost>
+      <CostInWords>{$costInWords}</CostInWords>
       <ShippingCode>{fn:concat(data(PART/COUNTRY/text()),data(PART/PINCODE/text()))}</ShippingCode>
       <ModelNumber>{$modelNumber}</ModelNumber>
       {
@@ -27,6 +29,7 @@ then(
       <Item>{data(PART/ITEM/text())}</Item>
       <Manufacturer>{data(PART/MANUFACTURER/text())}</Manufacturer>
       <Cost>{data(PART/COST/text())}</Cost>
+      <CostInWords>{$costInWords}</CostInWords>
        <ShippingCode>{fn:concat(data(PART/COUNTRY/text()),data(PART/PINCODE/text()))}</ShippingCode>
        <ModelNumber>{$modelNumber}</ModelNumber>
       {
@@ -46,6 +49,7 @@ else(
       <Item>{data(PART/ITEM/text())}</Item>
       <Manufacturer>{data(PART/MANUFACTURER/text())}</Manufacturer>
       <Cost>{data(PART/COST/text())}</Cost>
+      <CostInWords>{$costInWords}</CostInWords>
       <ModelNumber>{$modelNumber}</ModelNumber>
        <ShippingCode>{fn:concat(data(PART/COUNTRY/text()),data(PART/PINCODE/text()))}</ShippingCode>
       <Region>Unknown</Region>

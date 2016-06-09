@@ -40,3 +40,5 @@ http\://www.springframework.org/schema/p=org.springframework.beans.factory.xml.S
 http\://www.springframework.org/schema/util=org.springframework.beans.factory.xml.UtilNamespaceHandler
 
 http\://www.ryantenney.com/schema/metrics=com.ryantenney.metrics.spring.config.MetricsNamespaceHandler
+
+http\://camel.apache.org/schema/cxf=org.apache.camel.component.cxf.spring.NamespaceHandler

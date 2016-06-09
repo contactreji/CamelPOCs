@@ -1,0 +1,7 @@
+Hi Team,
+
+The JMS broker is down!
+
+Kindly look into it. Exception details = ${in.headers.CAMEL_EXCEPTION}
+
+-Camel Alert

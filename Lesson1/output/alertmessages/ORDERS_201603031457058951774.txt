@@ -1,8 +1,0 @@
-Hello Customer
-
-This is a notification for the recently received order Video Card bound for region US10003.
-
-Manufacturer : ATI
-
-Regards
-Team!

@@ -3,43 +3,139 @@
 
 <beans xmlns="http://www.springframework.org/schema/beans"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:amq="http://activemq.apache.org/schema/core"
-	xmlns:ctx="http://www.springframework.org/schema/context"
+	xmlns:ctx="http://www.springframework.org/schema/context" xmlns:cxf="http://camel.apache.org/schema/cxf"
+	xmlns:m="http://www.dataaccess.com/webservicesserver/"
 	xsi:schemaLocation="
        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
        http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd
        http://activemq.apache.org/schema/core http://activemq.apache.org/schema/core/activemq-core.xsd
        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+       http://camel.apache.org/schema/cxf http://camel.apache.org/schema/cxf/camel-cxf.xsd
        ">
 
 	<ctx:property-placeholder location="classpath:appConfigs.properties" />
+
+	<cxf:cxfEndpoint id="NumberToWordService"
+		address="http://www.dataaccess.com/webservicesserver/numberconversion.wso"
+		wsdlURL="wsdl/NumberToWordService.wsdl" serviceName="ns0:NumberConversion"
+		endpointName="ns0:NumberConversionSoap" xmlns:ns0="http://www.dataaccess.com/webservicesserver/">
+		<cxf:properties>
+			<entry key="dataFormat" value="PAYLOAD" />
+		</cxf:properties>
+	</cxf:cxfEndpoint>
 
 	<camelContext xmlns="http://camel.apache.org/schema/spring">
 		<propertyPlaceholder location="classpath:appConfigs.properties"
 			id="placeholder" />
 
-		<!-- <route id="ScheduledPoller_Route">
-			<from uri="timer://foo?fixedRate=true&amp;period=60000" />
-			<pollEnrich uri="file:myinputfiles?noop=true" timeout="5000" />
-			<log
-				message="ScheduledPoller - The exchange ID is ${exchangeId} and file contains ${body}" />
-			<to uri="seda:parseXML" />
-		</route> -->
+		<onException>
+			<exception>org.apache.camel.component.file.GenericFileOperationFailedException
+			</exception>
+			<!-- we can set the redelivery policy here as well -->
+			<redeliveryPolicy maximumRedeliveries="1" />
+			<!-- mark this as handled -->
+			<handled>
+				<constant>true</constant>
+			</handled>
+			<setHeader headerName="customEmailSubject">
+				<simple>FTP Server unavailable at
+					${date:now:yyyyMMdd}${bean:dateClass?method=currentTimeMillis}
+				</simple>
+			</setHeader>
+			<to uri="direct:setEmailHeaders" />
+			<to uri="velocity:velocitytemplates/FTPDown.vm" />
+			<to
+				uri="smtps://smtp.gmail.com?mapMailMessage=true&amp;username=camelsmtpuser@gmail.com&amp;password=camelsmtppassword" />
+		</onException>
+
+		<onException>
+			<exception>org.springframework.jms.UncategorizedJmsException
+			</exception>
+			<!-- we can set the redelivery policy here as well -->
+			<redeliveryPolicy maximumRedeliveries="1" />
+			<!-- mark this as handled -->
+			<handled>
+				<constant>true</constant>
+			</handled>
+			<setHeader headerName="customEmailSubject">
+				<simple>JMS broker unavailable at
+					${date:now:yyyyMMdd}${bean:dateClass?method=currentTimeMillis}
+				</simple>
+			</setHeader>
+			<setHeader headerName="CAMEL_EXCEPTION">
+				<simple>${exception}</simple>
+			</setHeader>
+			<to uri="direct:setEmailHeaders" />
+			<to uri="velocity:velocitytemplates/JMSDown.vm" />
+			<to
+				uri="smtps://smtp.gmail.com?mapMailMessage=true&amp;username=camelsmtpuser@gmail.com&amp;password=camelsmtppassword" />
+		</onException>
+
+		<route>
+			<from uri="direct:setEmailHeaders" />
+			<setHeader headerName="to">
+				<constant>reji.webex01@gmail.com,amandeep.singh2@cognizant.com
+				</constant>
+			</setHeader>
+			<setHeader headerName="CC">
+				<constant>vsaravananv@gmail.com,navaraj.s@live.com</constant>
+			</setHeader>
+			<setHeader headerName="from">
+				<constant>camelsmtpuser@gmail.com</constant>
+			</setHeader>
+			<setHeader headerName="subject">
+				<simple>${in.header.customEmailSubject}</simple>
+			</setHeader>
+			<setHeader headerName="contentType">
+				<constant>text/plain</constant>
+			</setHeader>
+		</route>
+
+		<!-- <route id="ScheduledPoller_Route"> <from uri="timer://foo?fixedRate=true&amp;period=60000" 
+			/> <pollEnrich uri="file:myinputfiles?noop=true" timeout="5000" /> <log message="ScheduledPoller 
+			- The exchange ID is ${exchangeId} and file contains ${body}" /> <to uri="seda:parseXML" 
+			/> </route> -->
 
 		<route id="ContinousFilePollingRoute"> <!-- routePolicyRef="startPolicy" -->
-			<from uri="file:myinputfiles?noop=true" />
+			<!-- <from uri="file:myinputfiles?noop=true" /> -->
+			<from uri="file:myinputfiles/combinedset?noop=true" />
 			<log message="The exchange ID is ${exchangeId} and file contains ${body}" />
-			<to uri="seda:parseXML" />
+			<split>
+				<xpath>/PARTS/PART</xpath>
+				<!-- <log message="Splitted Exchange = ${body}"/> -->
+				<to uri="seda:parseXML" />
+			</split>
+
+			<!-- <to uri="seda:parseXML" /> -->
 		</route>
 
 		<route id="XqueryTransformationRoute">
-			<from uri="seda:parseXML" />
+			<from uri="seda:parseXML?concurrentConsumers=5" />
+			<!-- <log message="Dequeued message...."/> <delay><constant>3000</constant></delay> -->
 			<setHeader headerName="country">
 				<xpath resultType="java.lang.String">PART/COUNTRY/text()</xpath>
 			</setHeader>
 			<setProperty propertyName="modelNumber">
 				<xpath resultType="java.lang.String">PART/MODEL/text()</xpath>
 			</setProperty>
-
+			<!-- *****************Soap Service Enrichment********************** -->
+			<setProperty propertyName="bodyBackup">
+				<simple>${body}</simple>
+			</setProperty>
+			<setProperty propertyName="cost">
+				<xpath resultType="java.lang.String">PART/COST/text()</xpath>
+			</setProperty>
+			<to uri="xquery:xquery/NumberToWord_Request.xq" />
+			<log message="NumerToWords Service Request : ${body}" />
+			<to uri="cxf:bean:NumberToWordService" />
+			<log message="NumerToWords Service Response : ${body}" />
+			<setProperty propertyName="costInWords">
+				<xpath>//m:NumberToWordsResult</xpath>
+			</setProperty>
+			<setBody>
+				<simple>${property.bodyBackup}</simple>
+			</setBody>
+			<!-- ************************************************************ -->
 			<log message="Value of country is ${in.header.country}" />
 			<to uri="log:MyyExchangePrinter?showAll=true" />
 			<to uri="xquery:xquery/MyFirstXquery.xq" />
@@ -58,26 +154,49 @@
 			<setHeader headerName="manufacturer">
 				<xpath resultType="java.lang.String">//Manufacturer</xpath>
 			</setHeader>
-
 			<setHeader headerName="cost">
 				<xpath resultType="java.lang.String">//Cost</xpath>
 			</setHeader>
 			<setHeader headerName="model">
 				<xpath resultType="java.lang.String">//Model</xpath>
 			</setHeader>
-
-
+			<setHeader headerName="CamelFileName">
+				<simple>ORDER_${date:now:yyyyMMdd}${bean:dateClass?method=currentTimeMillis}.xml
+				</simple>
+			</setHeader>
 			<choice>
 				<when>
 					<simple>${in.header.country} == 'US'</simple>
-					<to uri="file:output/US" />
+					<aggregate strategyRef="aggregateStrategy"
+						completionInterval="5000">
+						<correlationExpression>
+							<constant>true</constant>
+						</correlationExpression>
+						<process ref="AddOuterXMLTag" />
+						<to uri="file:output/US" />
+					</aggregate>
+
 				</when>
 				<when>
 					<simple>${in.header.country} == 'INDIA'</simple>
-					<to uri="file:output/INDIA" />
+					<aggregate strategyRef="aggregateStrategy"
+						completionInterval="5000">
+						<correlationExpression>
+							<constant>true</constant>
+						</correlationExpression>
+						<process ref="AddOuterXMLTag" />
+						<to uri="file:output/INDIA" />
+					</aggregate>
 				</when>
 				<otherwise>
-					<to uri="file:output/UNCLASSIFIED" />
+					<aggregate strategyRef="aggregateStrategy"
+						completionInterval="5000">
+						<correlationExpression>
+							<constant>true</constant>
+						</correlationExpression>
+						<process ref="AddOuterXMLTag" />
+						<to uri="file:output/UNCLASSIFIED" />
+					</aggregate>
 				</otherwise>
 			</choice>
 
@@ -94,8 +213,26 @@
 				<simple>ORDERS_${date:now:yyyyMMdd}${bean:dateClass?method=currentTimeMillis}.txt
 				</simple>
 			</setHeader>
+
+			<!-- <setHeader headerName="to"> <constant>reji.webex01@gmail.com,amandeep.singh2@cognizant.com 
+				</constant> </setHeader> <setHeader headerName="CC"> <constant>vsaravananv@gmail.com,navaraj.s@live.com,</constant> 
+				</setHeader> <setHeader headerName="from"> <constant>camelsmtpuser@gmail.com</constant> 
+				</setHeader> <setHeader headerName="subject"> <simple>Alert Mail - Camel 
+				Training || Order ID - ${in.header.shippingCode} </simple> </setHeader> <setHeader 
+				headerName="contentType"> <constant>text/plain</constant> </setHeader> -->
+
+			<process ref="UpperCaseConversionJavaLogic" /> <!-- This is node which calls custom java compute nodes -->
+
+			<setHeader headerName="customEmailSubject">
+				<simple>Alert Mail - Camel Training || Order ID -
+					${in.header.shippingCode}
+				</simple>
+			</setHeader>
+			<to uri="direct:setEmailHeaders" />
 			<multicast>
 				<to uri="file:output/alertmessages" />
+				<!-- <to uri="smtps://smtp.gmail.com?mapMailMessage=true&amp;username=camelsmtpuser@gmail.com&amp;password=camelsmtppassword" 
+					/> -->
 				<to
 					uri="ftp://{{ftpUserName}}@{{ftpHost}}:{{ftpPort}}/{{ftpPath}}?password={{ftpPassword}}" />
 			</multicast>
@@ -103,6 +240,7 @@
 
 		<route id="DBInsertRoute">
 			<from uri="activemq:queue:DBLoggingChannel" />
+			<!-- <delay> <constant>5000</constant> </delay> -->
 			<to uri="log:CheckJMSHeaders?showAll=true" />
 			<!-- SQL Query should be in the Body part of Exchange -->
 			<setBody>
@@ -136,5 +274,7 @@
 		class="org.apache.camel.routepolicy.quartz.CronScheduledRoutePolicy">
 		<property name="routeStartTime" value="*/3 * * * * ?" />
 	</bean>
-
+	<bean id="UpperCaseConversionJavaLogic" class="com.custom.javalogics.MyCustomJavaLogic" />
+	<bean id="AddOuterXMLTag" class="com.custom.javalogics.AddOuterTagOrder" />
+	<bean id="aggregateStrategy" class="com.custom.aggregators.MyAggregator" />
 </beans>

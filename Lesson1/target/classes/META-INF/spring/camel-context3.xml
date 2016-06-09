@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Configures the Camel Context -->
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:amq="http://activemq.apache.org/schema/core"
+	xmlns:ctx="http://www.springframework.org/schema/context" xmlns:cxf="http://camel.apache.org/schema/cxf"
+	xmlns:m="http://www.dataaccess.com/webservicesserver/"
+	xsi:schemaLocation="
+       http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd
+       http://activemq.apache.org/schema/core http://activemq.apache.org/schema/core/activemq-core.xsd
+       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+       http://camel.apache.org/schema/cxf http://camel.apache.org/schema/cxf/camel-cxf.xsd
+       ">
+
+	<ctx:property-placeholder location="classpath:appConfigs.properties" />
+
+
+	<camelContext xmlns="http://camel.apache.org/schema/spring">
+		<propertyPlaceholder location="classpath:appConfigs.properties"
+			id="placeholder" />
+
+		<dataFormats>
+			<json id="mapToJsonMarshaller" library="Jackson" />
+		</dataFormats>
+
+		<route id="RestCLIENT">
+			<from
+				uri="file:myinputfiles/restclientinput?fileName=CompanyCode.txt&amp;noop=true" />
+			<convertBodyTo type="java.lang.String" />
+			<log message="Company CODE is ${body}" />
+			<setHeader headerName="Exchange.HTTP_QUERY">
+				<constant>format=json&amp;view=detail</constant>
+			</setHeader>
+			<setHeader headerName="Exchange.HTTP_URI">
+				<simple>http://finance.yahoo.com/webservice/v1/symbols/${body}/quote
+				</simple>
+			</setHeader>
+			<setHeader headerName="Exchange.HTTP_METHOD">
+				<constant>GET</constant>
+			</setHeader>
+			<to uri="http://dummyurl.com" />
+			<to uri="file:output/restClientOutput?fileName=restOutput.txt" />
+		</route>
+
+		<route>
+			<from
+				uri="restlet:http://127.0.0.1:8182/myrestservice/{orderID}?restletMethod=GET" />
+			<setBody>
+				<simple>select * from orders where
+					shippingCode='${in.header.orderID}'
+				</simple>
+			</setBody>
+			<to uri="jdbc:dataSourceConnectorPGSQL" />
+			<marshal ref ="mapToJsonMarshaller"/>
+			<transform>
+				<simple>${body}</simple>
+			</transform>
+		</route>
+
+	</camelContext>
+</beans>

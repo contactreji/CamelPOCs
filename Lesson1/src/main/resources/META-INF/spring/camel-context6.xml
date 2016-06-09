@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Configures the Camel Context -->
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:amq="http://activemq.apache.org/schema/core"
+	xmlns:ctx="http://www.springframework.org/schema/context" xmlns:cxf="http://camel.apache.org/schema/cxf"
+	xmlns:m="http://www.dataaccess.com/webservicesserver/"
+	xsi:schemaLocation="
+       http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd
+       http://activemq.apache.org/schema/core http://activemq.apache.org/schema/core/activemq-core.xsd
+       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+       http://camel.apache.org/schema/cxf http://camel.apache.org/schema/cxf/camel-cxf.xsd
+       ">
+
+	<ctx:property-placeholder location="classpath:appConfigs.properties" />
+
+
+	<camelContext xmlns="http://camel.apache.org/schema/spring">
+
+		<route id="writeToCache">
+			<from uri="file:myinputfiles/cacheinput?noop=true" />
+
+			<split>
+				<xpath>/PARTS/PART</xpath>
+				<setHeader headerName="pincode">
+					<xpath resultType="java.lang.String">PART/PINCODE/text()</xpath>
+				</setHeader>
+				<to uri="seda:loadIntoCache" />
+			</split>
+		</route>
+
+		<route>
+			<from uri="seda:loadIntoCache" />
+			<setHeader headerName="CamelCacheOperation">
+				<constant>CamelCacheAdd</constant>
+			</setHeader>
+			<setHeader headerName="CamelCacheKey">
+				<simple>${in.header.pincode}</simple>
+			</setHeader>
+			<log
+				message="Storing into cache with key = ${in.header.CamelCacheKey} and operation = ${in.header.CamelCacheOperation} and value = ${body}" />
+			<to uri="cache:OrdersCache" />
+		</route>
+
+		<route>
+			<from uri="stream:in?promptMessage=Enter PinCode" />
+			<setHeader headerName="CamelCacheOperation">
+				<constant>CamelCacheGet</constant>
+			</setHeader>
+			<setHeader headerName="CamelCacheKey">
+				<simple>${body}</simple>
+			</setHeader>
+			<to uri="metrics:timer:MyCacheExecutionTimer?action=start" />
+			<to uri="cache:OrdersCache" />
+			<to uri="metrics:timer:MyCacheExecutionTimer?action=stop" />
+
+			<log message="Details of Order = ${body}" />
+		</route>
+
+	</camelContext>
+</beans>

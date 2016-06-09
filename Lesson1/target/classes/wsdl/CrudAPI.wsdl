@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- edited with XMLSpy v2008 rel. 2 (http://www.altova.com) by mazuki (darksiderg) -->
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:http="http://schemas.xmlsoap.org/wsdl/http/" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/" xmlns:tns="http://new.webservice.namespace" targetNamespace="http://new.webservice.namespace">
+	<wsdl:import namespace="http://com.poc.customerRecords" location="Record.xsd"/>
+	<wsdl:types>
+		<xs:schema targetNamespace="http://new.webservice.namespace" elementFormDefault="qualified"/>
+	</wsdl:types>
+	<wsdl:message name="CreateInput">
+		<wsdl:part name="parameter" element="CustomerRecords"/>
+	</wsdl:message>
+	<wsdl:message name="CreateResponse">
+		<wsdl:part name="CreateResponse" type="xs:string"/>
+	</wsdl:message>
+	<wsdl:message name="ReadInput">
+		<wsdl:part name="shippingCode" type="xs:string"/>
+	</wsdl:message>
+	<wsdl:message name="ReadResponse">
+		<wsdl:part name="parameter" element="CustomerRecords"/>
+	</wsdl:message>
+	<wsdl:message name="UpdateInput">
+		<wsdl:part name="parameter" element="CustomerRecords"/>
+	</wsdl:message>
+	<wsdl:message name="UpdateResponse">
+		<wsdl:part name="parameter" type="xs:string"/>
+	</wsdl:message>
+	<wsdl:message name="DeleteInput">
+		<wsdl:part name="shippingCode" type="xs:string"/>
+	</wsdl:message>
+	<wsdl:message name="DeleteResponse">
+		<wsdl:part name="DeleteResponse" type="xs:string"/>
+	</wsdl:message>
+	<wsdl:portType name="CRUDPortType">
+		<wsdl:operation name="CreateOperation">
+			<wsdl:input message="tns:CreateInput"/>
+			<wsdl:output message="tns:CreateResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="ReadOperation">
+			<wsdl:input message="tns:ReadInput"/>
+			<wsdl:output message="tns:ReadResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="UpdateOperation">
+			<wsdl:input message="tns:UpdateInput"/>
+			<wsdl:output message="tns:UpdateResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="DeleteOperation">
+			<wsdl:output message="tns:DeleteInput"/>
+			<wsdl:input message="tns:DeleteResponse"/>
+		</wsdl:operation>
+	</wsdl:portType>
+	<wsdl:binding name="CRUDBinding" type="tns:CRUDPortType">
+		<soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+		<wsdl:operation name="CreateOperation">
+			<soap:operation soapAction="urn:#NewOperation"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="ReadOperation">
+			<soap:operation soapAction="urn:#NewOperation"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="UpdateOperation">
+			<soap:operation soapAction="urn:#NewOperation"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="DeleteOperation">
+			<soap:operation soapAction="urn:#NewOperation"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+	</wsdl:binding>
+	<wsdl:service name="CRUDService">
+		<wsdl:port name="CRUDPort" binding="tns:CRUDBinding">
+			<soap:address location="http://localhost:818/crud"/>
+		</wsdl:port>
+	</wsdl:service>
+</wsdl:definitions>
