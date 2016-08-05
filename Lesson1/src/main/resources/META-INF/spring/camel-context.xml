@@ -74,11 +74,11 @@
 		<route>
 			<from uri="direct:setEmailHeaders" />
 			<setHeader headerName="to">
-				<constant>reji.webex01@gmail.com,amandeep.singh2@cognizant.com
+				<constant>reji.webex01@gmail.com,contactreji@gmail.com
 				</constant>
 			</setHeader>
 			<setHeader headerName="CC">
-				<constant>vsaravananv@gmail.com,navaraj.s@live.com</constant>
+				<constant>contactreji@icloud.com</constant>
 			</setHeader>
 			<setHeader headerName="from">
 				<constant>camelsmtpuser@gmail.com</constant>
